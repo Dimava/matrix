@@ -57,7 +57,9 @@ export default class CholeskyDecomposition {
     }
 
     let count = value.columns;
-    let B = value.clone();
+    // A plain Matrix copy: the clone of a SymmetricMatrix would mirror every
+    // write.
+    let B = new Matrix(value);
     let i, j, k;
 
     for (k = 0; k < dimension; k++) {

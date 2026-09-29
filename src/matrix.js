@@ -330,7 +330,9 @@ export class AbstractMatrix {
   }
 
   echelonForm() {
-    let result = this.clone();
+    // A plain Matrix copy: the clone of a SymmetricMatrix would mirror every
+    // write.
+    let result = new Matrix(this);
     let h = 0;
     let k = 0;
     while (h < result.rows && k < result.columns) {

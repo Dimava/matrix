@@ -7,7 +7,9 @@ export default class QrDecomposition {
   constructor(value) {
     value = WrapperMatrix2D.checkMatrix(value);
 
-    let qr = value.clone();
+    // A plain Matrix copy: the clone of a SymmetricMatrix would mirror every
+    // write.
+    let qr = new Matrix(value);
     let m = value.rows;
     let n = value.columns;
     let rdiag = new Float64Array(n);
@@ -58,7 +60,7 @@ export default class QrDecomposition {
     }
 
     let count = value.columns;
-    let X = value.clone();
+    let X = new Matrix(value);
     let n = qr.columns;
     let i, j, k, s;
 
