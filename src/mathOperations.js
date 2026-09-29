@@ -5,6 +5,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.addS = function addS(value) {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] + value;
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) + value);
@@ -18,6 +29,18 @@ export function installMathOperations(AbstractMatrix, Matrix) {
     if (this.rows !== matrix.rows ||
       this.columns !== matrix.columns) {
       throw new RangeError('Matrices dimensions must be equal');
+    }
+    if (this instanceof Matrix && matrix instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        const other = matrix.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] + other[j];
+        }
+      }
+      return this;
     }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
@@ -38,6 +61,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.subS = function subS(value) {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] - value;
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) - value);
@@ -51,6 +85,18 @@ export function installMathOperations(AbstractMatrix, Matrix) {
     if (this.rows !== matrix.rows ||
       this.columns !== matrix.columns) {
       throw new RangeError('Matrices dimensions must be equal');
+    }
+    if (this instanceof Matrix && matrix instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        const other = matrix.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] - other[j];
+        }
+      }
+      return this;
     }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
@@ -75,6 +121,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.mulS = function mulS(value) {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] * value;
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) * value);
@@ -88,6 +145,18 @@ export function installMathOperations(AbstractMatrix, Matrix) {
     if (this.rows !== matrix.rows ||
       this.columns !== matrix.columns) {
       throw new RangeError('Matrices dimensions must be equal');
+    }
+    if (this instanceof Matrix && matrix instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        const other = matrix.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] * other[j];
+        }
+      }
+      return this;
     }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
@@ -112,6 +181,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.divS = function divS(value) {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] / value;
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) / value);
@@ -125,6 +205,18 @@ export function installMathOperations(AbstractMatrix, Matrix) {
     if (this.rows !== matrix.rows ||
       this.columns !== matrix.columns) {
       throw new RangeError('Matrices dimensions must be equal');
+    }
+    if (this instanceof Matrix && matrix instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        const other = matrix.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] / other[j];
+        }
+      }
+      return this;
     }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
@@ -149,6 +241,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.modS = function modS(value) {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] % value;
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) % value);
@@ -162,6 +265,18 @@ export function installMathOperations(AbstractMatrix, Matrix) {
     if (this.rows !== matrix.rows ||
       this.columns !== matrix.columns) {
       throw new RangeError('Matrices dimensions must be equal');
+    }
+    if (this instanceof Matrix && matrix instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        const other = matrix.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] % other[j];
+        }
+      }
+      return this;
     }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
@@ -186,6 +301,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.andS = function andS(value) {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] & value;
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) & value);
@@ -199,6 +325,18 @@ export function installMathOperations(AbstractMatrix, Matrix) {
     if (this.rows !== matrix.rows ||
       this.columns !== matrix.columns) {
       throw new RangeError('Matrices dimensions must be equal');
+    }
+    if (this instanceof Matrix && matrix instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        const other = matrix.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] & other[j];
+        }
+      }
+      return this;
     }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
@@ -219,6 +357,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.orS = function orS(value) {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] | value;
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) | value);
@@ -232,6 +381,18 @@ export function installMathOperations(AbstractMatrix, Matrix) {
     if (this.rows !== matrix.rows ||
       this.columns !== matrix.columns) {
       throw new RangeError('Matrices dimensions must be equal');
+    }
+    if (this instanceof Matrix && matrix instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        const other = matrix.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] | other[j];
+        }
+      }
+      return this;
     }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
@@ -252,6 +413,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.xorS = function xorS(value) {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] ^ value;
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) ^ value);
@@ -265,6 +437,18 @@ export function installMathOperations(AbstractMatrix, Matrix) {
     if (this.rows !== matrix.rows ||
       this.columns !== matrix.columns) {
       throw new RangeError('Matrices dimensions must be equal');
+    }
+    if (this instanceof Matrix && matrix instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        const other = matrix.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] ^ other[j];
+        }
+      }
+      return this;
     }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
@@ -285,6 +469,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.leftShiftS = function leftShiftS(value) {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] << value;
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) << value);
@@ -298,6 +493,18 @@ export function installMathOperations(AbstractMatrix, Matrix) {
     if (this.rows !== matrix.rows ||
       this.columns !== matrix.columns) {
       throw new RangeError('Matrices dimensions must be equal');
+    }
+    if (this instanceof Matrix && matrix instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        const other = matrix.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] << other[j];
+        }
+      }
+      return this;
     }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
@@ -318,6 +525,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.signPropagatingRightShiftS = function signPropagatingRightShiftS(value) {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] >> value;
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) >> value);
@@ -331,6 +549,18 @@ export function installMathOperations(AbstractMatrix, Matrix) {
     if (this.rows !== matrix.rows ||
       this.columns !== matrix.columns) {
       throw new RangeError('Matrices dimensions must be equal');
+    }
+    if (this instanceof Matrix && matrix instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        const other = matrix.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] >> other[j];
+        }
+      }
+      return this;
     }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
@@ -351,6 +581,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.rightShiftS = function rightShiftS(value) {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] >>> value;
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) >>> value);
@@ -364,6 +605,18 @@ export function installMathOperations(AbstractMatrix, Matrix) {
     if (this.rows !== matrix.rows ||
       this.columns !== matrix.columns) {
       throw new RangeError('Matrices dimensions must be equal');
+    }
+    if (this instanceof Matrix && matrix instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        const other = matrix.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] >>> other[j];
+        }
+      }
+      return this;
     }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
@@ -383,6 +636,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   AbstractMatrix.zeroFillRightShift = AbstractMatrix.rightShift;
 
   AbstractMatrix.prototype.not = function not() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = ~(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, ~(this.get(i, j)));
@@ -397,6 +661,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.abs = function abs() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.abs(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.abs(this.get(i, j)));
@@ -411,6 +686,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.acos = function acos() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.acos(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.acos(this.get(i, j)));
@@ -425,6 +711,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.acosh = function acosh() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.acosh(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.acosh(this.get(i, j)));
@@ -439,6 +736,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.asin = function asin() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.asin(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.asin(this.get(i, j)));
@@ -453,6 +761,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.asinh = function asinh() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.asinh(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.asinh(this.get(i, j)));
@@ -467,6 +786,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.atan = function atan() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.atan(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.atan(this.get(i, j)));
@@ -481,6 +811,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.atanh = function atanh() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.atanh(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.atanh(this.get(i, j)));
@@ -495,6 +836,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.cbrt = function cbrt() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.cbrt(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.cbrt(this.get(i, j)));
@@ -509,6 +861,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.ceil = function ceil() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.ceil(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.ceil(this.get(i, j)));
@@ -523,6 +886,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.clz32 = function clz32() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.clz32(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.clz32(this.get(i, j)));
@@ -537,6 +911,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.cos = function cos() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.cos(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.cos(this.get(i, j)));
@@ -551,6 +936,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.cosh = function cosh() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.cosh(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.cosh(this.get(i, j)));
@@ -565,6 +961,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.exp = function exp() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.exp(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.exp(this.get(i, j)));
@@ -579,6 +986,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.expm1 = function expm1() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.expm1(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.expm1(this.get(i, j)));
@@ -593,6 +1011,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.floor = function floor() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.floor(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.floor(this.get(i, j)));
@@ -607,6 +1036,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.fround = function fround() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.fround(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.fround(this.get(i, j)));
@@ -621,6 +1061,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.log = function log() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.log(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.log(this.get(i, j)));
@@ -635,6 +1086,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.log1p = function log1p() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.log1p(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.log1p(this.get(i, j)));
@@ -649,6 +1111,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.log10 = function log10() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.log10(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.log10(this.get(i, j)));
@@ -663,6 +1136,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.log2 = function log2() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.log2(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.log2(this.get(i, j)));
@@ -677,6 +1161,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.round = function round() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.round(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.round(this.get(i, j)));
@@ -691,6 +1186,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.sign = function sign() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.sign(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.sign(this.get(i, j)));
@@ -705,6 +1211,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.sin = function sin() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.sin(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.sin(this.get(i, j)));
@@ -719,6 +1236,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.sinh = function sinh() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.sinh(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.sinh(this.get(i, j)));
@@ -733,6 +1261,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.sqrt = function sqrt() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.sqrt(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.sqrt(this.get(i, j)));
@@ -747,6 +1286,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.tan = function tan() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.tan(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.tan(this.get(i, j)));
@@ -761,6 +1311,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.tanh = function tanh() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.tanh(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.tanh(this.get(i, j)));
@@ -775,6 +1336,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.trunc = function trunc() {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = Math.trunc(row[j]);
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, Math.trunc(this.get(i, j)));
@@ -799,6 +1371,17 @@ export function installMathOperations(AbstractMatrix, Matrix) {
   };
 
   AbstractMatrix.prototype.powS = function powS(value) {
+    if (this instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] ** value;
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) ** value);
@@ -812,6 +1395,18 @@ export function installMathOperations(AbstractMatrix, Matrix) {
     if (this.rows !== matrix.rows ||
       this.columns !== matrix.columns) {
       throw new RangeError('Matrices dimensions must be equal');
+    }
+    if (this instanceof Matrix && matrix instanceof Matrix) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];
+        const other = matrix.data[i];
+        for (let j = 0; j < columns; j++) {
+          row[j] = row[j] ** other[j];
+        }
+      }
+      return this;
     }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {

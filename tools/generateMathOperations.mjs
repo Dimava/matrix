@@ -66,30 +66,53 @@ const inplaceOperator = `
   };
 `;
 
-const inplaceOperatorScalar = `
-  AbstractMatrix.prototype.%name% = function %name%(value) {
+// Matrix keeps one Float64Array per row, so when every operand is a Matrix the
+// loop reads and writes the rows directly instead of dispatching through
+// get/set per element. Other AbstractMatrix subclasses (views, wrappers) take
+// the generic path. Both visit the elements in the same order.
+// In `expression`, `X` is the element of `this` and `Y` the element of `matrix`.
+function elementLoop(expression, withMatrix) {
+  const dense = expression
+    .replaceAll('X', 'row[j]')
+    .replaceAll('Y', 'other[j]');
+  const generic = expression
+    .replaceAll('X', 'this.get(i, j)')
+    .replaceAll('Y', 'matrix.get(i, j)');
+  return `    if (this instanceof Matrix${withMatrix ? ' && matrix instanceof Matrix' : ''}) {
+      const rows = this.rows;
+      const columns = this.columns;
+      for (let i = 0; i < rows; i++) {
+        const row = this.data[i];${withMatrix ? '\n        const other = matrix.data[i];' : ''}
+        for (let j = 0; j < columns; j++) {
+          row[j] = ${dense};
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
-        this.set(i, j, this.get(i, j) %op% value);
+        this.set(i, j, ${generic});
       }
     }
-    return this;
+    return this;`;
+}
+
+const checkSameSize = `    matrix = Matrix.checkMatrix(matrix);
+    if (this.rows !== matrix.rows ||
+      this.columns !== matrix.columns) {
+      throw new RangeError('Matrices dimensions must be equal');
+    }`;
+
+const inplaceOperatorScalar = `
+  AbstractMatrix.prototype.%name% = function %name%(value) {
+${elementLoop('X %op% value', false)}
   };
 `;
 
 const inplaceOperatorMatrix = `
   AbstractMatrix.prototype.%name% = function %name%(matrix) {
-    matrix = Matrix.checkMatrix(matrix);
-    if (this.rows !== matrix.rows ||
-      this.columns !== matrix.columns) {
-      throw new RangeError('Matrices dimensions must be equal');
-    }
-    for (let i = 0; i < this.rows; i++) {
-      for (let j = 0; j < this.columns; j++) {
-        this.set(i, j, this.get(i, j) %op% matrix.get(i, j));
-      }
-    }
-    return this;
+${checkSameSize}
+${elementLoop('X %op% Y', true)}
   };
 `;
 
@@ -102,12 +125,7 @@ const staticOperator = `
 
 const inplaceMethod = `
   AbstractMatrix.prototype.%name% = function %name%() {
-    for (let i = 0; i < this.rows; i++) {
-      for (let j = 0; j < this.columns; j++) {
-        this.set(i, j, %method%(this.get(i, j)));
-      }
-    }
-    return this;
+${elementLoop('%method%(X)', false)}
   };
 `;
 
@@ -120,12 +138,7 @@ const staticMethod = `
 
 const inplaceMethodWithArgs = `
   AbstractMatrix.prototype.%name% = function %name%(%args%) {
-    for (let i = 0; i < this.rows; i++) {
-      for (let j = 0; j < this.columns; j++) {
-        this.set(i, j, %method%(this.get(i, j), %args%));
-      }
-    }
-    return this;
+${elementLoop('%method%(X, %args%)', false)}
   };
 `;
 
@@ -138,27 +151,13 @@ const staticMethodWithArgs = `
 
 const inplaceMethodWithOneArgScalar = `
   AbstractMatrix.prototype.%name% = function %name%(value) {
-    for (let i = 0; i < this.rows; i++) {
-      for (let j = 0; j < this.columns; j++) {
-        this.set(i, j, %method%(this.get(i, j), value));
-      }
-    }
-    return this;
+${elementLoop('%method%(X, value)', false)}
   };
 `;
 const inplaceMethodWithOneArgMatrix = `
   AbstractMatrix.prototype.%name% = function %name%(matrix) {
-    matrix = Matrix.checkMatrix(matrix);
-    if (this.rows !== matrix.rows ||
-      this.columns !== matrix.columns) {
-      throw new RangeError('Matrices dimensions must be equal');
-    }
-    for (let i = 0; i < this.rows; i++) {
-      for (let j = 0; j < this.columns; j++) {
-        this.set(i, j, %method%(this.get(i, j), matrix.get(i, j)));
-      }
-    }
-    return this;
+${checkSameSize}
+${elementLoop('%method%(X, Y)', true)}
   };
 `;
 
@@ -295,5 +294,10 @@ for (const methodWithArg of methodsWithArgs) {
   }
 }
 
-const result = `${mathOperations.join('')}}\n`;
+// Math.pow(x, y) is written x ** y, as the prefer-exponentiation-operator lint
+// rule wants.
+const result = `${mathOperations.join('')}}\n`.replaceAll(
+  /Math\.pow\((?<base>.+?), (?<exponent>value|other\[j\]|matrix\.get\(i, j\))\)/g,
+  '$<base> ** $<exponent>',
+);
 fs.writeFileSync('src/mathOperations.js', result);

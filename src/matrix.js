@@ -42,8 +42,9 @@ export class AbstractMatrix {
     }
     let newMatrix = new Matrix(newRows, newColumns);
     for (let row = 0; row < newRows; row++) {
+      const target = newMatrix.data[row];
       for (let column = 0; column < newColumns; column++) {
-        newMatrix.set(row, column, newData[row * newColumns + column]);
+        target[column] = newData[row * newColumns + column];
       }
     }
     return newMatrix;
@@ -51,8 +52,9 @@ export class AbstractMatrix {
 
   static rowVector(newData) {
     let vector = new Matrix(1, newData.length);
+    const target = vector.data[0];
     for (let i = 0; i < newData.length; i++) {
-      vector.set(0, i, newData[i]);
+      target[i] = newData[i];
     }
     return vector;
   }
@@ -60,7 +62,7 @@ export class AbstractMatrix {
   static columnVector(newData) {
     let vector = new Matrix(newData.length, 1);
     for (let i = 0; i < newData.length; i++) {
-      vector.set(i, 0, newData[i]);
+      vector.data[i][0] = newData[i];
     }
     return vector;
   }
@@ -80,8 +82,9 @@ export class AbstractMatrix {
     const { random = Math.random } = options;
     let matrix = new Matrix(rows, columns);
     for (let i = 0; i < rows; i++) {
+      const row = matrix.data[i];
       for (let j = 0; j < columns; j++) {
-        matrix.set(i, j, random());
+        row[j] = random();
       }
     }
     return matrix;
@@ -98,9 +101,9 @@ export class AbstractMatrix {
     let interval = max - min;
     let matrix = new Matrix(rows, columns);
     for (let i = 0; i < rows; i++) {
+      const row = matrix.data[i];
       for (let j = 0; j < columns; j++) {
-        let value = min + Math.round(random() * interval);
-        matrix.set(i, j, value);
+        row[j] = min + Math.round(random() * interval);
       }
     }
     return matrix;
@@ -207,6 +210,16 @@ export class AbstractMatrix {
 
   to1DArray() {
     let array = [];
+    if (this instanceof Matrix) {
+      const columns = this.columns;
+      for (let i = 0; i < this.rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < columns; j++) {
+          array.push(row[j]);
+        }
+      }
+      return array;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         array.push(this.get(i, j));
@@ -217,6 +230,18 @@ export class AbstractMatrix {
 
   to2DArray() {
     let copy = [];
+    if (this instanceof Matrix) {
+      const columns = this.columns;
+      for (let i = 0; i < this.rows; i++) {
+        const row = this.data[i];
+        const target = [];
+        for (let j = 0; j < columns; j++) {
+          target.push(row[j]);
+        }
+        copy.push(target);
+      }
+      return copy;
+    }
     for (let i = 0; i < this.rows; i++) {
       copy.push([]);
       for (let j = 0; j < this.columns; j++) {
@@ -251,6 +276,18 @@ export class AbstractMatrix {
   }
 
   isSymmetric() {
+    if (this instanceof Matrix && this.isSquare()) {
+      const data = this.data;
+      for (let i = 0; i < this.rows; i++) {
+        const row = data[i];
+        for (let j = 0; j <= i; j++) {
+          if (row[j] !== data[j][i]) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
     if (this.isSquare()) {
       for (let i = 0; i < this.rows; i++) {
         for (let j = 0; j <= i; j++) {
@@ -439,6 +476,13 @@ export class AbstractMatrix {
   getRow(index) {
     checkRowIndex(this, index);
     let row = [];
+    if (this instanceof Matrix) {
+      const source = this.data[index];
+      for (let i = 0; i < this.columns; i++) {
+        row.push(source[i]);
+      }
+      return row;
+    }
     for (let i = 0; i < this.columns; i++) {
       row.push(this.get(index, i));
     }
@@ -452,6 +496,13 @@ export class AbstractMatrix {
   setRow(index, array) {
     checkRowIndex(this, index);
     array = checkRowVector(this, array);
+    if (this instanceof Matrix) {
+      const target = this.data[index];
+      for (let i = 0; i < this.columns; i++) {
+        target[i] = array[i];
+      }
+      return this;
+    }
     for (let i = 0; i < this.columns; i++) {
       this.set(index, i, array[i]);
     }
@@ -461,6 +512,16 @@ export class AbstractMatrix {
   swapRows(row1, row2) {
     checkRowIndex(this, row1);
     checkRowIndex(this, row2);
+    if (this instanceof Matrix) {
+      const first = this.data[row1];
+      const second = this.data[row2];
+      for (let i = 0; i < this.columns; i++) {
+        let temp = first[i];
+        first[i] = second[i];
+        second[i] = temp;
+      }
+      return this;
+    }
     for (let i = 0; i < this.columns; i++) {
       let temp = this.get(row1, i);
       this.set(row1, i, this.get(row2, i));
@@ -472,6 +533,12 @@ export class AbstractMatrix {
   getColumn(index) {
     checkColumnIndex(this, index);
     let column = [];
+    if (this instanceof Matrix) {
+      for (let i = 0; i < this.rows; i++) {
+        column.push(this.data[i][index]);
+      }
+      return column;
+    }
     for (let i = 0; i < this.rows; i++) {
       column.push(this.get(i, index));
     }
@@ -485,6 +552,12 @@ export class AbstractMatrix {
   setColumn(index, array) {
     checkColumnIndex(this, index);
     array = checkColumnVector(this, array);
+    if (this instanceof Matrix) {
+      for (let i = 0; i < this.rows; i++) {
+        this.data[i][index] = array[i];
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       this.set(i, index, array[i]);
     }
@@ -494,6 +567,15 @@ export class AbstractMatrix {
   swapColumns(column1, column2) {
     checkColumnIndex(this, column1);
     checkColumnIndex(this, column2);
+    if (this instanceof Matrix) {
+      for (let i = 0; i < this.rows; i++) {
+        const row = this.data[i];
+        let temp = row[column1];
+        row[column1] = row[column2];
+        row[column2] = temp;
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       let temp = this.get(i, column1);
       this.set(i, column1, this.get(i, column2));
@@ -504,6 +586,15 @@ export class AbstractMatrix {
 
   addRowVector(vector) {
     vector = checkRowVector(this, vector);
+    if (this instanceof Matrix) {
+      for (let i = 0; i < this.rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < this.columns; j++) {
+          row[j] = row[j] + vector[j];
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) + vector[j]);
@@ -514,6 +605,15 @@ export class AbstractMatrix {
 
   subRowVector(vector) {
     vector = checkRowVector(this, vector);
+    if (this instanceof Matrix) {
+      for (let i = 0; i < this.rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < this.columns; j++) {
+          row[j] = row[j] - vector[j];
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) - vector[j]);
@@ -524,6 +624,15 @@ export class AbstractMatrix {
 
   mulRowVector(vector) {
     vector = checkRowVector(this, vector);
+    if (this instanceof Matrix) {
+      for (let i = 0; i < this.rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < this.columns; j++) {
+          row[j] = row[j] * vector[j];
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) * vector[j]);
@@ -534,6 +643,15 @@ export class AbstractMatrix {
 
   divRowVector(vector) {
     vector = checkRowVector(this, vector);
+    if (this instanceof Matrix) {
+      for (let i = 0; i < this.rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < this.columns; j++) {
+          row[j] = row[j] / vector[j];
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) / vector[j]);
@@ -544,6 +662,15 @@ export class AbstractMatrix {
 
   addColumnVector(vector) {
     vector = checkColumnVector(this, vector);
+    if (this instanceof Matrix) {
+      for (let i = 0; i < this.rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < this.columns; j++) {
+          row[j] = row[j] + vector[i];
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) + vector[i]);
@@ -554,6 +681,15 @@ export class AbstractMatrix {
 
   subColumnVector(vector) {
     vector = checkColumnVector(this, vector);
+    if (this instanceof Matrix) {
+      for (let i = 0; i < this.rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < this.columns; j++) {
+          row[j] = row[j] - vector[i];
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) - vector[i]);
@@ -564,6 +700,15 @@ export class AbstractMatrix {
 
   mulColumnVector(vector) {
     vector = checkColumnVector(this, vector);
+    if (this instanceof Matrix) {
+      for (let i = 0; i < this.rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < this.columns; j++) {
+          row[j] = row[j] * vector[i];
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) * vector[i]);
@@ -574,6 +719,15 @@ export class AbstractMatrix {
 
   divColumnVector(vector) {
     vector = checkColumnVector(this, vector);
+    if (this instanceof Matrix) {
+      for (let i = 0; i < this.rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < this.columns; j++) {
+          row[j] = row[j] / vector[i];
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         this.set(i, j, this.get(i, j) / vector[i]);
@@ -601,6 +755,9 @@ export class AbstractMatrix {
   max(by) {
     if (this.isEmpty()) {
       return NaN;
+    }
+    if (this instanceof Matrix) {
+      return maxOfRows(this.data, this.rows, this.columns, by);
     }
     switch (by) {
       case 'row': {
@@ -643,6 +800,9 @@ export class AbstractMatrix {
 
   maxIndex() {
     checkNonEmpty(this);
+    if (this instanceof Matrix) {
+      return indexOfMax(this.data, this.rows, this.columns);
+    }
     let v = this.get(0, 0);
     let idx = [0, 0];
     for (let i = 0; i < this.rows; i++) {
@@ -660,6 +820,9 @@ export class AbstractMatrix {
   min(by) {
     if (this.isEmpty()) {
       return NaN;
+    }
+    if (this instanceof Matrix) {
+      return minOfRows(this.data, this.rows, this.columns, by);
     }
 
     switch (by) {
@@ -703,6 +866,9 @@ export class AbstractMatrix {
 
   minIndex() {
     checkNonEmpty(this);
+    if (this instanceof Matrix) {
+      return indexOfMin(this.data, this.rows, this.columns);
+    }
     let v = this.get(0, 0);
     let idx = [0, 0];
     for (let i = 0; i < this.rows; i++) {
@@ -851,6 +1017,16 @@ export class AbstractMatrix {
 
   cumulativeSum() {
     let sum = 0;
+    if (this instanceof Matrix) {
+      for (let i = 0; i < this.rows; i++) {
+        const row = this.data[i];
+        for (let j = 0; j < this.columns; j++) {
+          sum += row[j];
+          row[j] = sum;
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.columns; j++) {
         sum += this.get(i, j);
@@ -861,6 +1037,23 @@ export class AbstractMatrix {
   }
 
   dot(vector2) {
+    if (
+      this instanceof Matrix &&
+      vector2 instanceof Matrix &&
+      this.rows === vector2.rows &&
+      this.columns === vector2.columns
+    ) {
+      // Same row-major order as the flattened loop below, without the copies.
+      let dot = 0;
+      for (let i = 0; i < this.rows; i++) {
+        const row1 = this.data[i];
+        const row2 = vector2.data[i];
+        for (let j = 0; j < this.columns; j++) {
+          dot += row1[j] * row2[j];
+        }
+      }
+      return dot;
+    }
     if (AbstractMatrix.isMatrix(vector2)) vector2 = vector2.to1DArray();
     let vector1 = this.to1DArray();
     if (vector1.length !== vector2.length) {
@@ -1318,11 +1511,16 @@ export class AbstractMatrix {
     let q = other.columns;
 
     let result = new Matrix(m * p, n * q);
+    const a = rowsOf(this);
+    const b = rowsOf(other);
     for (let i = 0; i < m; i++) {
       for (let j = 0; j < n; j++) {
+        const value = a[i][j];
         for (let k = 0; k < p; k++) {
+          const source = b[k];
+          const target = result.data[p * i + k];
           for (let l = 0; l < q; l++) {
-            result.set(p * i + k, q * j + l, this.get(i, j) * other.get(k, l));
+            target[q * j + l] = value * source[l];
           }
         }
       }
@@ -1343,10 +1541,31 @@ export class AbstractMatrix {
   }
 
   transpose() {
-    let result = new Matrix(this.columns, this.rows);
-    for (let i = 0; i < this.rows; i++) {
-      for (let j = 0; j < this.columns; j++) {
-        result.set(j, i, this.get(i, j));
+    const rows = this.rows;
+    const columns = this.columns;
+    let result = new Matrix(columns, rows);
+    const target = result.data;
+    if (!(this instanceof Matrix)) {
+      for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < columns; j++) {
+          target[j][i] = this.get(i, j);
+        }
+      }
+      return result;
+    }
+    const source = this.data;
+    // Tiles keep both the rows being read and the rows being written in cache.
+    const tile = 32;
+    for (let i0 = 0; i0 < rows; i0 += tile) {
+      const i1 = Math.min(i0 + tile, rows);
+      for (let j0 = 0; j0 < columns; j0 += tile) {
+        const j1 = Math.min(j0 + tile, columns);
+        for (let i = i0; i < i1; i++) {
+          const row = source[i];
+          for (let j = j0; j < j1; j++) {
+            target[j][i] = row[j];
+          }
+        }
       }
     }
     return result;
@@ -1372,6 +1591,16 @@ export class AbstractMatrix {
       endRow - startRow + 1,
       endColumn - startColumn + 1,
     );
+    if (this instanceof Matrix) {
+      for (let i = startRow; i <= endRow; i++) {
+        const source = this.data[i];
+        const target = newMatrix.data[i - startRow];
+        for (let j = startColumn; j <= endColumn; j++) {
+          target[j - startColumn] = source[j];
+        }
+      }
+      return newMatrix;
+    }
     for (let i = startRow; i <= endRow; i++) {
       for (let j = startColumn; j <= endColumn; j++) {
         newMatrix.set(i - startRow, j - startColumn, this.get(i, j));
@@ -1438,6 +1667,16 @@ export class AbstractMatrix {
     let endRow = startRow + matrix.rows - 1;
     let endColumn = startColumn + matrix.columns - 1;
     checkRange(this, startRow, endRow, startColumn, endColumn);
+    if (this instanceof Matrix && matrix instanceof Matrix) {
+      for (let i = 0; i < matrix.rows; i++) {
+        const source = matrix.data[i];
+        const target = this.data[startRow + i];
+        for (let j = 0; j < matrix.columns; j++) {
+          target[startColumn + j] = source[j];
+        }
+      }
+      return this;
+    }
     for (let i = 0; i < matrix.rows; i++) {
       for (let j = 0; j < matrix.columns; j++) {
         this.set(startRow + i, startColumn + j, matrix.get(i, j));
@@ -1480,6 +1719,16 @@ export class AbstractMatrix {
     checkRowIndices(this, rowIndices);
     checkColumnIndices(this, columnIndices);
     let newMatrix = new Matrix(rowIndices.length, columnIndices.length);
+    if (this instanceof Matrix) {
+      for (let i = 0; i < rowIndices.length; i++) {
+        const source = this.data[rowIndices[i]];
+        const target = newMatrix.data[i];
+        for (let j = 0; j < columnIndices.length; j++) {
+          target[j] = source[columnIndices[j]];
+        }
+      }
+      return newMatrix;
+    }
     for (let i = 0; i < rowIndices.length; i++) {
       let rowIndex = rowIndices[i];
       for (let j = 0; j < columnIndices.length; j++) {
@@ -1510,21 +1759,34 @@ export class AbstractMatrix {
    * @return {M}
    */
   static copy(from, to) {
-    for (const [row, column, value] of from.entries()) {
-      to.set(row, column, value);
+    // Same row-major order as `from.entries()`, without allocating an entry
+    // per element.
+    if (from instanceof Matrix && to instanceof Matrix) {
+      for (let row = 0; row < from.rows; row++) {
+        const source = from.data[row];
+        const target = to.data[row];
+        for (let column = 0; column < from.columns; column++) {
+          target[column] = source[column];
+        }
+      }
+      return to;
     }
-
+    for (let row = 0; row < from.rows; row++) {
+      for (let column = 0; column < from.columns; column++) {
+        to.set(row, column, from.get(row, column));
+      }
+    }
     return to;
   }
 
   sum(by) {
     switch (by) {
       case 'row':
-        return sumByRow(this);
+        return sumByRow(this, denseRows(this));
       case 'column':
-        return sumByColumn(this);
+        return sumByColumn(this, denseRows(this));
       case undefined:
-        return sumAll(this);
+        return sumAll(this, denseRows(this));
       default:
         throw new Error(`invalid option: ${by}`);
     }
@@ -1533,11 +1795,11 @@ export class AbstractMatrix {
   product(by) {
     switch (by) {
       case 'row':
-        return productByRow(this);
+        return productByRow(this, denseRows(this));
       case 'column':
-        return productByColumn(this);
+        return productByColumn(this, denseRows(this));
       case undefined:
-        return productAll(this);
+        return productAll(this, denseRows(this));
       default:
         throw new Error(`invalid option: ${by}`);
     }
@@ -1582,19 +1844,19 @@ export class AbstractMatrix {
         if (!isAnyArray(mean)) {
           throw new TypeError('mean must be an array');
         }
-        return varianceByRow(this, unbiased, mean);
+        return varianceByRow(this, denseRows(this), unbiased, mean);
       }
       case 'column': {
         if (!isAnyArray(mean)) {
           throw new TypeError('mean must be an array');
         }
-        return varianceByColumn(this, unbiased, mean);
+        return varianceByColumn(this, denseRows(this), unbiased, mean);
       }
       case undefined: {
         if (typeof mean !== 'number') {
           throw new TypeError('mean must be a number');
         }
-        return varianceAll(this, unbiased, mean);
+        return varianceAll(this, denseRows(this), unbiased, mean);
       }
       default:
         throw new Error(`invalid option: ${by}`);
@@ -1631,21 +1893,21 @@ export class AbstractMatrix {
         if (!isAnyArray(center)) {
           throw new TypeError('center must be an array');
         }
-        centerByRow(this, center);
+        centerByRow(this, center, denseRows(this));
         return this;
       }
       case 'column': {
         if (!isAnyArray(center)) {
           throw new TypeError('center must be an array');
         }
-        centerByColumn(this, center);
+        centerByColumn(this, center, denseRows(this));
         return this;
       }
       case undefined: {
         if (typeof center !== 'number') {
           throw new TypeError('center must be a number');
         }
-        centerAll(this, center);
+        centerAll(this, center, denseRows(this));
         return this;
       }
       default:
@@ -1665,29 +1927,29 @@ export class AbstractMatrix {
     switch (by) {
       case 'row': {
         if (scale === undefined) {
-          scale = getScaleByRow(this);
+          scale = getScaleByRow(this, denseRows(this));
         } else if (!isAnyArray(scale)) {
           throw new TypeError('scale must be an array');
         }
-        scaleByRow(this, scale);
+        scaleByRow(this, scale, denseRows(this));
         return this;
       }
       case 'column': {
         if (scale === undefined) {
-          scale = getScaleByColumn(this);
+          scale = getScaleByColumn(this, denseRows(this));
         } else if (!isAnyArray(scale)) {
           throw new TypeError('scale must be an array');
         }
-        scaleByColumn(this, scale);
+        scaleByColumn(this, scale, denseRows(this));
         return this;
       }
       case undefined: {
         if (scale === undefined) {
-          scale = getScaleAll(this);
+          scale = getScaleAll(this, denseRows(this));
         } else if (typeof scale !== 'number') {
           throw new TypeError('scale must be a number');
         }
-        scaleAll(this, scale);
+        scaleAll(this, scale, denseRows(this));
         return this;
       }
       default:
@@ -1734,6 +1996,171 @@ AbstractMatrix.prototype.klass = 'Matrix';
 if (typeof Symbol !== 'undefined') {
   AbstractMatrix.prototype[Symbol.for('nodejs.util.inspect.custom')] =
     inspectMatrix;
+}
+
+/**
+ * Rows of a matrix for products, which read every element several times: the
+ * backing Float64Array rows of a Matrix, or those of a copy made through `get`
+ * for other subclasses, which the product soon repays.
+ * @param {AbstractMatrix} matrix
+ * @returns {Float64Array[]}
+ */
+function rowsOf(matrix) {
+  return matrix instanceof Matrix ? matrix.data : new Matrix(matrix).data;
+}
+
+/**
+ * The backing rows of a Matrix, which loops can read and write directly, or
+ * `undefined` for other subclasses, which must go through `get` and `set`.
+ * @param {AbstractMatrix} matrix
+ * @returns {Float64Array[] | undefined}
+ */
+function denseRows(matrix) {
+  return matrix instanceof Matrix ? matrix.data : undefined;
+}
+
+/**
+ * `max(by)` of a non-empty Matrix, reading its rows directly.
+ * @param {Float64Array[]} data
+ * @param {number} rows
+ * @param {number} columns
+ * @param {'row' | 'column' | undefined} by
+ */
+function maxOfRows(data, rows, columns, by) {
+  switch (by) {
+    case 'row': {
+      const max = new Array(rows).fill(Number.NEGATIVE_INFINITY);
+      for (let row = 0; row < rows; row++) {
+        const values = data[row];
+        for (let column = 0; column < columns; column++) {
+          if (values[column] > max[row]) {
+            max[row] = values[column];
+          }
+        }
+      }
+      return max;
+    }
+    case 'column': {
+      const max = new Array(columns).fill(Number.NEGATIVE_INFINITY);
+      for (let row = 0; row < rows; row++) {
+        const values = data[row];
+        for (let column = 0; column < columns; column++) {
+          if (values[column] > max[column]) {
+            max[column] = values[column];
+          }
+        }
+      }
+      return max;
+    }
+    case undefined: {
+      let max = data[0][0];
+      for (let row = 0; row < rows; row++) {
+        const values = data[row];
+        for (let column = 0; column < columns; column++) {
+          if (values[column] > max) {
+            max = values[column];
+          }
+        }
+      }
+      return max;
+    }
+    default:
+      throw new Error(`invalid option: ${by}`);
+  }
+}
+
+/**
+ * `min(by)` of a non-empty Matrix, reading its rows directly.
+ * @param {Float64Array[]} data
+ * @param {number} rows
+ * @param {number} columns
+ * @param {'row' | 'column' | undefined} by
+ */
+function minOfRows(data, rows, columns, by) {
+  switch (by) {
+    case 'row': {
+      const min = new Array(rows).fill(Number.POSITIVE_INFINITY);
+      for (let row = 0; row < rows; row++) {
+        const values = data[row];
+        for (let column = 0; column < columns; column++) {
+          if (values[column] < min[row]) {
+            min[row] = values[column];
+          }
+        }
+      }
+      return min;
+    }
+    case 'column': {
+      const min = new Array(columns).fill(Number.POSITIVE_INFINITY);
+      for (let row = 0; row < rows; row++) {
+        const values = data[row];
+        for (let column = 0; column < columns; column++) {
+          if (values[column] < min[column]) {
+            min[column] = values[column];
+          }
+        }
+      }
+      return min;
+    }
+    case undefined: {
+      let min = data[0][0];
+      for (let row = 0; row < rows; row++) {
+        const values = data[row];
+        for (let column = 0; column < columns; column++) {
+          if (values[column] < min) {
+            min = values[column];
+          }
+        }
+      }
+      return min;
+    }
+    default:
+      throw new Error(`invalid option: ${by}`);
+  }
+}
+
+/**
+ * `maxIndex()` of a non-empty Matrix, reading its rows directly.
+ * @param {Float64Array[]} data
+ * @param {number} rows
+ * @param {number} columns
+ */
+function indexOfMax(data, rows, columns) {
+  let v = data[0][0];
+  let idx = [0, 0];
+  for (let i = 0; i < rows; i++) {
+    const row = data[i];
+    for (let j = 0; j < columns; j++) {
+      if (row[j] > v) {
+        v = row[j];
+        idx[0] = i;
+        idx[1] = j;
+      }
+    }
+  }
+  return idx;
+}
+
+/**
+ * `minIndex()` of a non-empty Matrix, reading its rows directly.
+ * @param {Float64Array[]} data
+ * @param {number} rows
+ * @param {number} columns
+ */
+function indexOfMin(data, rows, columns) {
+  let v = data[0][0];
+  let idx = [0, 0];
+  for (let i = 0; i < rows; i++) {
+    const row = data[i];
+    for (let j = 0; j < columns; j++) {
+      if (row[j] < v) {
+        v = row[j];
+        idx[0] = i;
+        idx[1] = j;
+      }
+    }
+  }
+  return idx;
 }
 
 function compareNumbers(a, b) {
