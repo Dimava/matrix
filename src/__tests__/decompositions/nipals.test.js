@@ -2,7 +2,7 @@ import { toBeDeepCloseTo } from 'jest-matcher-deep-close-to';
 import { getNumbers, getClasses } from 'ml-dataset-iris';
 import { describe, it, expect } from 'vitest';
 
-import { Matrix, correlation, NIPALS } from '../..';
+import { Matrix, NIPALS, SymmetricMatrix, correlation } from '../..';
 import irisPC14 from '../../../data/irisPC1-4.json';
 import irisMetadata from '../../../data/irisScaledClasses.json';
 import simpleDataset from '../../../data/simpleDataset.json';
@@ -158,6 +158,31 @@ describe('NIPALS pls', () => {
     expect(model.p.getRow(0)).toBeDeepCloseTo([
       -0.7501523, -0.378257, -0.5153763, -0.1690576,
     ]);
+  });
+
+  it('NIPALS with a SymmetricMatrix as X and Y', () => {
+    const x = [
+      [4, 1, 2, 0],
+      [1, 3, 0, 1],
+      [2, 0, 5, 2],
+      [0, 1, 2, 6],
+    ];
+    const y = [
+      [1, 2, 0, 1],
+      [2, 3, 1, 0],
+      [0, 1, 2, 2],
+      [1, 0, 2, 4],
+    ];
+    const model = new NIPALS(new SymmetricMatrix(x), {
+      Y: new SymmetricMatrix(y),
+    });
+    const expected = new NIPALS(new Matrix(x), { Y: new Matrix(y) });
+    expect(model.xResidual.to2DArray()).toStrictEqual(
+      expected.xResidual.to2DArray(),
+    );
+    expect(model.yResidual.to2DArray()).toStrictEqual(
+      expected.yResidual.to2DArray(),
+    );
   });
 });
 

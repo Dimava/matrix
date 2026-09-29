@@ -1,7 +1,14 @@
 import { SparseMatrix } from 'ml-sparse-matrix';
 import { describe, it, beforeEach, expect } from 'vitest';
 
-import { Matrix, pseudoInverse, determinant } from '../..';
+import {
+  Matrix,
+  MatrixSubView,
+  MatrixTransposeView,
+  WrapperMatrix2D,
+  determinant,
+  pseudoInverse,
+} from '../..';
 import * as util from '../../../testUtils';
 
 describe('utility methods', () => {
@@ -89,6 +96,25 @@ describe('utility methods', () => {
     expect(clone).toStrictEqual(squareMatrix);
     expect(clone).toBeInstanceOf(Matrix);
     expect(Matrix.isMatrix(clone)).toBe(true);
+  });
+
+  it('clone of a view or a wrapper', () => {
+    const views = [
+      new MatrixTransposeView(squareMatrix),
+      new MatrixSubView(squareMatrix, 0, 1, 1, 2),
+      new WrapperMatrix2D([
+        [1, 2],
+        [3, 4],
+      ]),
+    ];
+    for (const view of views) {
+      const clone = view.clone();
+      expect(clone).toBeInstanceOf(Matrix);
+      expect(clone.to2DArray()).toStrictEqual(view.to2DArray());
+
+      clone.set(0, 0, 100);
+      expect(view.get(0, 0)).not.toBe(100);
+    }
   });
 
   it('to1DArray', () => {

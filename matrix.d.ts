@@ -801,9 +801,10 @@ export abstract class AbstractMatrix {
   trace(): number;
 
   /**
-   * Creates an exact and independent copy of the matrix.
+   * Creates an exact and independent copy of the matrix. The copy is a Matrix,
+   * except for a SymmetricMatrix or a DistanceMatrix, which keep their class.
    */
-  clone(): this;
+  clone(): AbstractMatrix;
 
   static copy<M extends AbstractMatrix>(from: AbstractMatrix, to: M): M;
 
@@ -1046,6 +1047,7 @@ export class Matrix extends AbstractMatrix {
 
   set(rowIndex: number, columnIndex: number, value: number): this;
   get(rowIndex: number, columnIndex: number): number;
+  clone(): Matrix;
 
   /**
    * Removes a column from the matrix (in place).
@@ -1193,7 +1195,12 @@ export class SymmetricMatrix extends AbstractMatrix {
    */
   static fromCompact(compact: number[]): SymmetricMatrix;
 
-  clone(): this;
+  /**
+   * Creates an exact and independent copy of the matrix, as a SymmetricMatrix:
+   * setting a value of the copy also sets its mirror. For a copy whose values
+   * can be set one by one, use `toMatrix()`.
+   */
+  clone(): SymmetricMatrix;
 
   /**
    * half iterator upper-right-corner from left to right, from top to bottom
@@ -1289,43 +1296,54 @@ export class DistanceMatrix extends SymmetricMatrix {
    */
   static fromCompact(compact: number[]): DistanceMatrix;
 
-  clone(): this;
+  /**
+   * Creates an exact and independent copy of the matrix, as a DistanceMatrix:
+   * setting a value of the copy also sets its mirror, and the diagonal stays 0.
+   * For a copy whose values can be set one by one, use `toMatrix()`.
+   */
+  clone(): DistanceMatrix;
 }
 
 export class MatrixColumnView extends AbstractMatrix {
   constructor(matrix: AbstractMatrix, column: number);
   set(rowIndex: number, columnIndex: number, value: number): this;
   get(rowIndex: number, columnIndex: number): number;
+  clone(): Matrix;
 }
 
 export class MatrixColumnSelectionView extends AbstractMatrix {
   constructor(matrix: AbstractMatrix, columnIndices: ArrayLike<number>);
   set(rowIndex: number, columnIndex: number, value: number): this;
   get(rowIndex: number, columnIndex: number): number;
+  clone(): Matrix;
 }
 
 export class MatrixFlipColumnView extends AbstractMatrix {
   constructor(matrix: AbstractMatrix);
   set(rowIndex: number, columnIndex: number, value: number): this;
   get(rowIndex: number, columnIndex: number): number;
+  clone(): Matrix;
 }
 
 export class MatrixFlipRowView extends AbstractMatrix {
   constructor(matrix: AbstractMatrix);
   set(rowIndex: number, columnIndex: number, value: number): this;
   get(rowIndex: number, columnIndex: number): number;
+  clone(): Matrix;
 }
 
 export class MatrixRowView extends AbstractMatrix {
   constructor(matrix: AbstractMatrix, row: number);
   set(rowIndex: number, columnIndex: number, value: number): this;
   get(rowIndex: number, columnIndex: number): number;
+  clone(): Matrix;
 }
 
 export class MatrixRowSelectionView extends AbstractMatrix {
   constructor(matrix: AbstractMatrix, rowIndices: ArrayLike<number>);
   set(rowIndex: number, columnIndex: number, value: number): this;
   get(rowIndex: number, columnIndex: number): number;
+  clone(): Matrix;
 }
 
 export class MatrixSelectionView extends AbstractMatrix {
@@ -1336,6 +1354,7 @@ export class MatrixSelectionView extends AbstractMatrix {
   );
   set(rowIndex: number, columnIndex: number, value: number): this;
   get(rowIndex: number, columnIndex: number): number;
+  clone(): Matrix;
 }
 
 export class MatrixSubView extends AbstractMatrix {
@@ -1348,12 +1367,14 @@ export class MatrixSubView extends AbstractMatrix {
   );
   set(rowIndex: number, columnIndex: number, value: number): this;
   get(rowIndex: number, columnIndex: number): number;
+  clone(): Matrix;
 }
 
 export class MatrixTransposeView extends AbstractMatrix {
   constructor(matrix: AbstractMatrix);
   set(rowIndex: number, columnIndex: number, value: number): this;
   get(rowIndex: number, columnIndex: number): number;
+  clone(): Matrix;
 }
 
 export interface IWrap1DOptions {
@@ -1374,12 +1395,14 @@ export class WrapperMatrix1D extends AbstractMatrix {
   constructor(data: ArrayLike<number>, options?: IWrap1DOptions);
   set(rowIndex: number, columnIndex: number, value: number): this;
   get(rowIndex: number, columnIndex: number): number;
+  clone(): Matrix;
 }
 
 export class WrapperMatrix2D extends AbstractMatrix {
   constructor(data: ArrayLike<ArrayLike<number>>);
   set(rowIndex: number, columnIndex: number, value: number): this;
   get(rowIndex: number, columnIndex: number): number;
+  clone(): Matrix;
 }
 
 /**
