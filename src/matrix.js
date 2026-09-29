@@ -3,6 +3,7 @@ import rescale from 'ml-array-rescale';
 
 import { inspectMatrix, inspectMatrixWithOptions } from './inspect';
 import { installMathOperations } from './mathOperations';
+import { multiply } from './multiply';
 import {
   centerAll,
   centerByColumn,
@@ -1074,7 +1075,13 @@ export class AbstractMatrix {
     let p = other.columns;
 
     let result = new Matrix(m, p);
+    if (other.rows >= n) {
+      multiply(rowsOf(this), rowsOf(other), result.data, m, n, p);
+      return result;
+    }
 
+    // `other` has too few rows. This loop keeps what that has always done:
+    // throw for a Matrix, read undefined values for some other subclasses.
     let Bcolj = new Float64Array(n);
     for (let j = 0; j < p; j++) {
       for (let k = 0; k < n; k++) {
