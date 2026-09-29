@@ -1998,6 +1998,47 @@ if (typeof Symbol !== 'undefined') {
     inspectMatrix;
 }
 
+// A Float64Array of more than 8 values gets its own buffer outside the JS
+// heap, and allocating one per row makes a new matrix much slower to create
+// than to fill. Such rows are views into one shared buffer instead, up to
+// 1 GiB so that very large matrices do not depend on one huge allocation.
+const MAX_HEAP_ROW_LENGTH = 8;
+const MAX_SHARED_BUFFER_BYTES = 2 ** 30;
+// Rows of a multiple of 64 values (512 bytes) would all start at the same few
+// offsets within 4 KiB and compete for the same cache sets whenever a loop
+// walks down a column (transpose of 1024 × 1024 took 1.7 times as long), so
+// such rows are spaced one cache line (8 values) further apart.
+const ROW_PADDING_PERIOD = 64;
+const ROW_PADDING = 8;
+
+/**
+ * @param {number} rows
+ * @param {number} columns
+ * @returns {Float64Array[]} `rows` zero-filled rows of `columns` values
+ */
+function allocateRows(rows, columns) {
+  const data = [];
+  const stride =
+    columns % ROW_PADDING_PERIOD === 0 ? columns + ROW_PADDING : columns;
+  const bytes = rows * stride * Float64Array.BYTES_PER_ELEMENT;
+  if (
+    rows > 1 &&
+    columns > MAX_HEAP_ROW_LENGTH &&
+    bytes <= MAX_SHARED_BUFFER_BYTES
+  ) {
+    const buffer = new ArrayBuffer(bytes);
+    const strideBytes = stride * Float64Array.BYTES_PER_ELEMENT;
+    for (let i = 0; i < rows; i++) {
+      data.push(new Float64Array(buffer, i * strideBytes, columns));
+    }
+  } else {
+    for (let i = 0; i < rows; i++) {
+      data.push(new Float64Array(columns));
+    }
+  }
+  return data;
+}
+
 /**
  * Rows of a matrix for products, which read every element several times: the
  * backing Float64Array rows of a Matrix, or those of a copy made through `get`
@@ -2195,13 +2236,10 @@ export default class Matrix extends AbstractMatrix {
    * @param {number} nColumns
    */
   #initData(nRows, nColumns) {
-    this.data = [];
-
     if (Number.isInteger(nColumns) && nColumns >= 0) {
-      for (let i = 0; i < nRows; i++) {
-        this.data.push(new Float64Array(nColumns));
-      }
+      this.data = allocateRows(nRows, nColumns);
     } else {
+      this.data = [];
       throw new TypeError('nColumns must be a positive integer');
     }
 
@@ -2235,7 +2273,10 @@ export default class Matrix extends AbstractMatrix {
         if (!isArrayOfNumbers(arrayData[i])) {
           throw new TypeError('Input data contains non-numeric values');
         }
-        this.data.push(Float64Array.from(arrayData[i]));
+      }
+      this.data = allocateRows(nRows, nColumns);
+      for (let i = 0; i < nRows; i++) {
+        this.data[i].set(arrayData[i]);
       }
 
       this.rows = nRows;
