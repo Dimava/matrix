@@ -1,6 +1,13 @@
 import Matrix from '../matrix';
 import WrapperMatrix2D from '../wrap/WrapperMatrix2D';
 
+// Columns factored together. Wider blocks give the dot products more
+// independent sums to overlap but leave more work to the column-by-column tail.
+const BLOCK = 4;
+// Below this many rows or columns, the dot products are too short for the
+// blocked algorithm to make up for its extra copying.
+const MIN_BLOCKED_SIZE = 80;
+
 export default class LuDecomposition {
   constructor(matrix) {
     matrix = WrapperMatrix2D.checkMatrix(matrix);
@@ -11,58 +18,14 @@ export default class LuDecomposition {
     let rows = lu.rows;
     let columns = lu.columns;
     let pivotVector = new Float64Array(rows);
-    let pivotSign = 1;
-    let i, j, k, p, s, t, v;
-    let LUcolj, kmax;
-
-    for (i = 0; i < rows; i++) {
+    for (let i = 0; i < rows; i++) {
       pivotVector[i] = i;
     }
 
-    LUcolj = new Float64Array(rows);
-
-    for (j = 0; j < columns; j++) {
-      for (i = 0; i < rows; i++) {
-        LUcolj[i] = lu.get(i, j);
-      }
-
-      for (i = 0; i < rows; i++) {
-        kmax = Math.min(i, j);
-        s = 0;
-        for (k = 0; k < kmax; k++) {
-          s += lu.get(i, k) * LUcolj[k];
-        }
-        LUcolj[i] -= s;
-        lu.set(i, j, LUcolj[i]);
-      }
-
-      p = j;
-      for (i = j + 1; i < rows; i++) {
-        if (Math.abs(LUcolj[i]) > Math.abs(LUcolj[p])) {
-          p = i;
-        }
-      }
-
-      if (p !== j) {
-        for (k = 0; k < columns; k++) {
-          t = lu.get(p, k);
-          lu.set(p, k, lu.get(j, k));
-          lu.set(j, k, t);
-        }
-
-        v = pivotVector[p];
-        pivotVector[p] = pivotVector[j];
-        pivotVector[j] = v;
-
-        pivotSign = -pivotSign;
-      }
-
-      if (j < rows && lu.get(j, j) !== 0) {
-        for (i = j + 1; i < rows; i++) {
-          lu.set(i, j, lu.get(i, j) / lu.get(j, j));
-        }
-      }
-    }
+    const pivotSign =
+      Math.min(rows, columns) < MIN_BLOCKED_SIZE
+        ? factorByColumn(lu.data, rows, columns, pivotVector)
+        : factorBlocked(lu.data, rows, columns, pivotVector);
 
     this.LU = lu;
     this.pivotVector = pivotVector;
@@ -94,26 +57,14 @@ export default class LuDecomposition {
     }
 
     let count = value.columns;
-    let X = value.subMatrixRow(this.pivotVector, 0, count - 1);
-    let columns = lu.columns;
-    let i, j, k;
-
-    for (k = 0; k < columns; k++) {
-      for (i = k + 1; i < columns; i++) {
-        for (j = 0; j < count; j++) {
-          X.set(i, j, X.get(i, j) - X.get(k, j) * lu.get(i, k));
-        }
-      }
+    if (rows >= MIN_IDENTITY_SOLVE_SIZE && solvesIdentity(lu, value)) {
+      return solveIdentity(lu.data, this.pivotVector, rows);
     }
-    for (k = columns - 1; k >= 0; k--) {
-      for (j = 0; j < count; j++) {
-        X.set(k, j, X.get(k, j) / lu.get(k, k));
-      }
-      for (i = 0; i < k; i++) {
-        for (j = 0; j < count; j++) {
-          X.set(i, j, X.get(i, j) - X.get(k, j) * lu.get(i, k));
-        }
-      }
+    let X = value.subMatrixRow(this.pivotVector, 0, count - 1);
+    for (let j0 = 0; j0 < count; j0 += SOLVE_BLOCK) {
+      const j1 = Math.min(j0 + SOLVE_BLOCK, count);
+      forward(lu.data, lu.columns, X.data, j0, j1);
+      backward(lu.data, lu.columns, X.data, j0, j1);
     }
     return X;
   }
@@ -170,4 +121,372 @@ export default class LuDecomposition {
   get pivotPermutationVector() {
     return Array.from(this.pivotVector);
   }
+}
+
+/**
+ * The Crout-style algorithm of JAMA, in place on the rows `data`: column j is
+ * finished with
+ *   LU[i][j] -= sum over k < min(i, j) of LU[i][k] * LU[k][j]
+ * where each sum starts at 0 and adds its terms in ascending k, followed by a
+ * partial pivoting row swap and the division of the column below the diagonal.
+ * @param {Float64Array[]} data
+ * @param {number} rows
+ * @param {number} columns
+ * @param {Float64Array} pivotVector
+ * @returns {number} the pivot sign
+ */
+function factorByColumn(data, rows, columns, pivotVector) {
+  let pivotSign = 1;
+  const column = new Float64Array(rows);
+  for (let j = 0; j < columns; j++) {
+    for (let i = 0; i < rows; i++) {
+      column[i] = data[i][j];
+    }
+    for (let i = 0; i < rows; i++) {
+      const row = data[i];
+      const kmax = Math.min(i, j);
+      let s = 0;
+      for (let k = 0; k < kmax; k++) {
+        s += row[k] * column[k];
+      }
+      column[i] -= s;
+      row[j] = column[i];
+    }
+
+    let p = j;
+    for (let i = j + 1; i < rows; i++) {
+      if (Math.abs(column[i]) > Math.abs(column[p])) {
+        p = i;
+      }
+    }
+    if (p !== j) {
+      const t = data[p];
+      data[p] = data[j];
+      data[j] = t;
+      const v = pivotVector[p];
+      pivotVector[p] = pivotVector[j];
+      pivotVector[j] = v;
+      pivotSign = -pivotSign;
+    }
+
+    if (j < rows && data[j][j] !== 0) {
+      const diagonal = data[j][j];
+      for (let i = j + 1; i < rows; i++) {
+        data[i][j] = data[i][j] / diagonal;
+      }
+    }
+  }
+  return pivotSign;
+}
+
+/**
+ * `factorByColumn` with the columns processed in blocks of BLOCK. Computing
+ * one sum at a time leaves every addition waiting for the previous one, so the
+ * sums of a block are interleaved. Each sum still adds the same terms in the
+ * same order, so the factors are identical.
+ * @param {Float64Array[]} data
+ * @param {number} rows
+ * @param {number} columns
+ * @param {Float64Array} pivotVector
+ * @returns {number} the pivot sign
+ */
+function factorBlocked(data, rows, columns, pivotVector) {
+  let pivotSign = 1;
+  const panel = new Float64Array(rows * BLOCK);
+  const partial = new Float64Array(rows * BLOCK);
+  for (let j0 = 0; j0 < columns; j0 += BLOCK) {
+    const width = Math.min(BLOCK, columns - j0);
+    const top = Math.min(j0, rows);
+
+    // `panel` holds the block columns, one row of BLOCK values per matrix row.
+    for (let i = 0; i < rows; i++) {
+      const row = data[i];
+      const offset = i * BLOCK;
+      for (let c = 0; c < width; c++) {
+        panel[offset + c] = row[j0 + c];
+      }
+    }
+
+    // Rows above the block: forward substitution with the finished rows of L,
+    // each row depending on the rows above it, for all block columns at once.
+    if (width === BLOCK) {
+      for (let i = 0; i < top; i++) {
+        const row = data[i];
+        let s0 = 0;
+        let s1 = 0;
+        let s2 = 0;
+        let s3 = 0;
+        for (let k = 0, q = 0; k < i; k++, q += BLOCK) {
+          const l = row[k];
+          s0 += l * panel[q];
+          s1 += l * panel[q + 1];
+          s2 += l * panel[q + 2];
+          s3 += l * panel[q + 3];
+        }
+        const q = i * BLOCK;
+        panel[q] -= s0;
+        panel[q + 1] -= s1;
+        panel[q + 2] -= s2;
+        panel[q + 3] -= s3;
+      }
+    } else {
+      for (let i = 0; i < top; i++) {
+        const row = data[i];
+        for (let c = 0; c < width; c++) {
+          let s = 0;
+          for (let k = 0; k < i; k++) {
+            s += row[k] * panel[k * BLOCK + c];
+          }
+          panel[i * BLOCK + c] -= s;
+        }
+      }
+    }
+
+    // Rows from the block down: the part of their sums over the finished
+    // columns (k < j0), two rows at a time. The rest is added below.
+    let i = j0;
+    if (width === BLOCK) {
+      for (; i + 1 < rows; i += 2) {
+        const row0 = data[i];
+        const row1 = data[i + 1];
+        let s00 = 0;
+        let s01 = 0;
+        let s02 = 0;
+        let s03 = 0;
+        let s10 = 0;
+        let s11 = 0;
+        let s12 = 0;
+        let s13 = 0;
+        for (let k = 0, q = 0; k < j0; k++, q += BLOCK) {
+          const u0 = panel[q];
+          const u1 = panel[q + 1];
+          const u2 = panel[q + 2];
+          const u3 = panel[q + 3];
+          const l0 = row0[k];
+          const l1 = row1[k];
+          s00 += l0 * u0;
+          s01 += l0 * u1;
+          s02 += l0 * u2;
+          s03 += l0 * u3;
+          s10 += l1 * u0;
+          s11 += l1 * u1;
+          s12 += l1 * u2;
+          s13 += l1 * u3;
+        }
+        const q = i * BLOCK;
+        partial[q] = s00;
+        partial[q + 1] = s01;
+        partial[q + 2] = s02;
+        partial[q + 3] = s03;
+        partial[q + BLOCK] = s10;
+        partial[q + BLOCK + 1] = s11;
+        partial[q + BLOCK + 2] = s12;
+        partial[q + BLOCK + 3] = s13;
+      }
+    }
+    for (; i < rows; i++) {
+      const row = data[i];
+      for (let c = 0; c < width; c++) {
+        let s = 0;
+        for (let k = 0; k < j0; k++) {
+          s += row[k] * panel[k * BLOCK + c];
+        }
+        partial[i * BLOCK + c] = s;
+      }
+    }
+
+    // Finish the block column by column, as the unblocked algorithm does.
+    for (let c = 0; c < width; c++) {
+      const j = j0 + c;
+      for (let i = j0; i < rows; i++) {
+        const row = data[i];
+        const kmax = Math.min(i, j);
+        let s = partial[i * BLOCK + c];
+        for (let k = j0; k < kmax; k++) {
+          s += row[k] * panel[k * BLOCK + c];
+        }
+        panel[i * BLOCK + c] -= s;
+      }
+      for (let i = 0; i < rows; i++) {
+        data[i][j] = panel[i * BLOCK + c];
+      }
+
+      let p = j;
+      for (let i = j + 1; i < rows; i++) {
+        if (Math.abs(panel[i * BLOCK + c]) > Math.abs(panel[p * BLOCK + c])) {
+          p = i;
+        }
+      }
+
+      if (p !== j) {
+        // `lu` is our own copy, so its rows can be swapped by reference. The
+        // block's working values move with their rows.
+        const t = data[p];
+        data[p] = data[j];
+        data[j] = t;
+        for (let d = 0; d < BLOCK; d++) {
+          const a = p * BLOCK + d;
+          const b = j * BLOCK + d;
+          let v = panel[a];
+          panel[a] = panel[b];
+          panel[b] = v;
+          v = partial[a];
+          partial[a] = partial[b];
+          partial[b] = v;
+        }
+
+        const v = pivotVector[p];
+        pivotVector[p] = pivotVector[j];
+        pivotVector[j] = v;
+
+        pivotSign = -pivotSign;
+      }
+
+      if (j < rows && data[j][j] !== 0) {
+        const diagonal = data[j][j];
+        for (let i = j + 1; i < rows; i++) {
+          data[i][j] = data[i][j] / diagonal;
+        }
+      }
+    }
+  }
+  return pivotSign;
+}
+
+// Right-hand-side columns handled together: every column is an independent
+// system, so splitting them keeps the rows being updated in cache.
+const SOLVE_BLOCK = 256;
+// Below this many rows, allocating the scratch matrix of solveIdentity costs
+// more than the third of the forward substitution it skips.
+const MIN_IDENTITY_SOLVE_SIZE = 20;
+
+/**
+ * Forward substitution with the unit lower factor, in place on the columns
+ * [from, to) of `x` (rows already permuted): `x[i] -= x[k] * L[i][k]` for
+ * ascending k, as the textbook loop does for each element.
+ * @param {Float64Array[]} lu
+ * @param {number} columns - columns of the factors
+ * @param {Float64Array[]} x
+ * @param {number} from
+ * @param {number} to
+ */
+function forward(lu, columns, x, from, to) {
+  for (let k = 0; k < columns; k++) {
+    const xk = x[k];
+    for (let i = k + 1; i < columns; i++) {
+      const xi = x[i];
+      const l = lu[i][k];
+      for (let j = from; j < to; j++) {
+        xi[j] -= xk[j] * l;
+      }
+    }
+  }
+}
+
+/**
+ * Back substitution with the upper factor, in place on the columns [from, to)
+ * of `x`: for descending k, `x[k] /= U[k][k]` then `x[i] -= x[k] * U[i][k]`.
+ * @param {Float64Array[]} lu
+ * @param {number} columns - columns of the factors
+ * @param {Float64Array[]} x
+ * @param {number} from
+ * @param {number} to
+ */
+function backward(lu, columns, x, from, to) {
+  for (let k = columns - 1; k >= 0; k--) {
+    const xk = x[k];
+    const diagonal = lu[k][k];
+    for (let j = from; j < to; j++) {
+      xk[j] /= diagonal;
+    }
+    for (let i = 0; i < k; i++) {
+      const xi = x[i];
+      const u = lu[i][k];
+      for (let j = from; j < to; j++) {
+        xi[j] -= xk[j] * u;
+      }
+    }
+  }
+}
+
+/**
+ * Whether solving the factors `lu` with `value` can take solveIdentity: `value`
+ * is the identity, and the multipliers are finite.
+ * @param {Matrix} lu
+ * @param {Matrix} value
+ * @returns {boolean}
+ */
+function solvesIdentity(lu, value) {
+  return (
+    lu.isSquare() &&
+    isIdentity(value) &&
+    hasFiniteMultipliers(lu.data, lu.columns)
+  );
+}
+
+function isIdentity(matrix) {
+  if (!(matrix instanceof Matrix) || !matrix.isSquare()) return false;
+  for (let i = 0; i < matrix.rows; i++) {
+    const row = matrix.data[i];
+    for (let j = 0; j < matrix.columns; j++) {
+      if (row[j] !== (i === j ? 1 : 0)) return false;
+    }
+  }
+  return true;
+}
+
+function hasFiniteMultipliers(lu, columns) {
+  for (let i = 1; i < columns; i++) {
+    const row = lu[i];
+    for (let k = 0; k < i; k++) {
+      if (!Number.isFinite(row[k])) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * `solve` with the identity as right-hand side, i.e. the inverse, skipping the
+ * operations that cannot change any bit of the result.
+ *
+ * The permuted identity has, in row r, a single 1 in column pivotVector[r].
+ * Ordering the columns that way turns it into the identity `y`, and forward
+ * substitution keeps row k of `y` exactly +0 right of column k. The skipped
+ * updates are all `y[i][q] -= (+0) * L[i][k]`: with finite multipliers that
+ * subtracts a zero, and `y` never holds a -0 for it to flip, so every element
+ * ends as in the full loop. Back substitution then runs in full.
+ * @param {Float64Array[]} lu
+ * @param {Float64Array} pivotVector
+ * @param {number} n
+ * @returns {Matrix}
+ */
+function solveIdentity(lu, pivotVector, n) {
+  const X = new Matrix(n, n);
+  const x = X.data;
+  const y = Matrix.eye(n).data;
+  for (let q0 = 0; q0 < n; q0 += SOLVE_BLOCK) {
+    const q1 = Math.min(q0 + SOLVE_BLOCK, n);
+    for (let k = q0; k < n; k++) {
+      const yk = y[k];
+      const end = Math.min(k + 1, q1);
+      for (let i = k + 1; i < n; i++) {
+        const yi = y[i];
+        const l = lu[i][k];
+        for (let q = q0; q < end; q++) {
+          yi[q] -= yk[q] * l;
+        }
+      }
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    const xi = x[i];
+    const yi = y[i];
+    for (let q = 0; q < n; q++) {
+      xi[pivotVector[q]] = yi[q];
+    }
+  }
+  for (let j0 = 0; j0 < n; j0 += SOLVE_BLOCK) {
+    backward(lu, n, x, j0, Math.min(j0 + SOLVE_BLOCK, n));
+  }
+  return X;
 }
