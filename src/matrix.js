@@ -3,7 +3,12 @@ import rescale from 'ml-array-rescale';
 
 import { inspectMatrix, inspectMatrixWithOptions } from './inspect';
 import { installMathOperations } from './mathOperations';
-import { multiply } from './multiply';
+import {
+  multiply,
+  productWasm,
+  WASM_MIN_SYMMETRIC_SIZE,
+  WASM_MIN_WORK,
+} from './multiply';
 import {
   centerAll,
   centerByColumn,
@@ -1104,6 +1109,19 @@ export class AbstractMatrix {
     const rows = this.rows;
     const n = this.columns;
 
+    if (n >= WASM_MIN_SYMMETRIC_SIZE && rows * n * n >= WASM_MIN_WORK) {
+      // thisᵀ · this in WebAssembly, lower triangle then mirrored. It adds the
+      // zero terms the loop below skips, which only matters if `this` has an
+      // infinite or NaN value, so that case is left to the loop.
+      const result = new Matrix(n, n);
+      const operand = { rows: rowsOf(this), transposed: true };
+      const options = { lowerOnly: true, finiteY: true };
+      if (productWasm(operand, operand, result.data, n, rows, n, options)) {
+        mirrorLowerTriangle(result.data, n);
+        return result;
+      }
+    }
+
     // The Gram matrix `thisᵀ · this` is symmetric, so only its upper triangle is
     // accumulated (then mirrored) and the transpose is never materialized.
     // Row-streaming rank-1 updates read each row of `this` contiguously and skip
@@ -1145,6 +1163,23 @@ export class AbstractMatrix {
     const p = other.columns;
 
     const result = new Matrix(n, p);
+    if (
+      this.rows * n * p >= WASM_MIN_WORK &&
+      // As in gram(), the zero terms skipped below are added, so `other` must
+      // be finite. Unlike mmul, a result of few columns pays off too, as the
+      // loop below is slower.
+      productWasm(
+        { rows: rowsOf(this), transposed: true },
+        { rows: rowsOf(other), transposed: true },
+        result.data,
+        n,
+        this.rows,
+        p,
+        { finiteY: true },
+      )
+    ) {
+      return result;
+    }
     const otherRow = new Float64Array(p);
     for (let r = 0; r < this.rows; r++) {
       for (let j = 0; j < p; j++) {
@@ -1171,6 +1206,24 @@ export class AbstractMatrix {
     }
 
     let result = new Matrix(m, m);
+
+    if (m >= WASM_MIN_SYMMETRIC_SIZE && m * n * m >= WASM_MIN_WORK) {
+      const operand = { rows: rowsOf(this), transposed: false };
+      if (
+        productWasm(
+          operand,
+          scale ? { ...operand, scale } : operand,
+          result.data,
+          m,
+          n,
+          m,
+          { lowerOnly: true },
+        )
+      ) {
+        mirrorLowerTriangle(result.data, m);
+        return result;
+      }
+    }
 
     // result = this · diag(scale) · thisᵀ is symmetric, so only the upper
     // triangle is computed and mirrored, and the transpose is never
@@ -2055,6 +2108,20 @@ function allocateRows(rows, columns) {
  */
 function rowsOf(matrix) {
   return matrix instanceof Matrix ? matrix.data : new Matrix(matrix).data;
+}
+
+/**
+ * Copies the lower triangle of a square matrix onto its upper triangle.
+ * @param {Float64Array[]} data
+ * @param {number} n
+ */
+function mirrorLowerTriangle(data, n) {
+  for (let i = 0; i < n; i++) {
+    const row = data[i];
+    for (let j = i + 1; j < n; j++) {
+      row[j] = data[j][i];
+    }
+  }
 }
 
 /**

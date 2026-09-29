@@ -1,3 +1,15 @@
+import { getKernels } from './wasm/index';
+
+// Below this many multiply-adds, copying the operands into WebAssembly memory
+// costs more than it saves.
+export const WASM_MIN_WORK = 4096;
+// It also costs more for an mmul result with fewer columns, whose copied
+// values are each used too few times.
+const WASM_MIN_COLUMNS = 8;
+// gram and mmulByTranspose copy their one operand once for both sides, which
+// pays off from a result of this many rows and columns.
+export const WASM_MIN_SYMMETRIC_SIZE = 4;
+
 // A Float64Array of more than 8 values is allocated outside the JS heap, which
 // takes longer than a small product, so small products share this panel.
 const sharedPanel = new Float64Array(1024);
@@ -21,6 +33,15 @@ const sharedPanel = new Float64Array(1024);
  * @param {number} p
  */
 export function multiply(a, b, c, m, n, p) {
+  // A single row stays here too: the kernel computes 4 rows at a time.
+  if (
+    m >= 2 &&
+    p >= WASM_MIN_COLUMNS &&
+    m * n * p >= WASM_MIN_WORK &&
+    multiplyWasm(a, b, c, m, n, p)
+  ) {
+    return;
+  }
   const panel =
     4 * n <= sharedPanel.length ? sharedPanel : new Float64Array(4 * n);
   const fullColumns = p - (p % 4);
@@ -127,4 +148,120 @@ export function multiply(a, b, c, m, n, p) {
       c[i][j] = s;
     }
   }
+}
+
+/**
+ * `multiply` with the WebAssembly kernel. Returns false if unavailable.
+ */
+function multiplyWasm(a, b, c, m, n, p) {
+  return productWasm(
+    { rows: a, transposed: false },
+    { rows: b, transposed: true },
+    c,
+    m,
+    n,
+    p,
+  );
+}
+
+/**
+ * Computes X · Yᵀ in WebAssembly and writes it into the rows `c`, where X is
+ * m × n and Y is p × n. Each operand is `{ rows, transposed, scale }`:
+ * X[i][k] is `rows[i][k]`, or `rows[k][i]` if `transposed`, times `scale[k]`
+ * (as `scale[k] * value`) if a scale is given. The same operand object as
+ * both X and Y is copied once. The cells are summed as in `multiply`,
+ * `0 + X[i][0] * Y[j][0] + X[i][1] * Y[j][1] + ...`.
+ *
+ * Options:
+ * - `lowerOnly`: only the cells with i >= j are needed.
+ * - `finiteY`: give up (return false) if Y has an infinite or NaN value.
+ * Returns false if WebAssembly is unavailable or `finiteY` fails.
+ * @returns {boolean}
+ */
+export function productWasm(x, y, c, m, n, p, options = {}) {
+  const { lowerOnly = false, finiteY = false } = options;
+  const mPanels = Math.ceil(m / 4);
+  const pPanels = Math.ceil(p / 4);
+  const width = pPanels * 4;
+  const xLength = mPanels * 4 * n;
+  const yLength = pPanels * 4 * n;
+  const packY = y !== x;
+  const offsetY = packY ? xLength : 0;
+  const offsetC = offsetY + yLength;
+  const kernels = getKernels((offsetC + mPanels * 4 * width) * 8);
+  if (!kernels) return false;
+  const f = kernels.f64;
+
+  pack(f, 0, x, m, n);
+  if (packY) pack(f, offsetY, y, p, n);
+  if (finiteY && !allFinite(f, offsetY, offsetY + yLength)) return false;
+
+  kernels.exports.gemm(
+    0,
+    offsetY * 8,
+    offsetC * 8,
+    mPanels,
+    n,
+    pPanels,
+    lowerOnly,
+  );
+
+  for (let i = 0; i < m; i++) {
+    const start = offsetC + i * width;
+    c[i].set(f.subarray(start, start + p));
+  }
+  return true;
+}
+
+/**
+ * Packs the count × n operand into f from `offset`, in panels of 4 rows:
+ * f[offset + (panel * n + k) * 4 + r] holds row 4 * panel + r, column k, and
+ * rows past `count` are zero.
+ */
+function pack(f, offset, operand, count, n) {
+  const { rows, transposed, scale } = operand;
+  const panels = Math.ceil(count / 4);
+  if (!transposed) {
+    for (let panel = 0; panel < panels; panel++) {
+      const base = offset + panel * 4 * n;
+      for (let r = 0; r < 4; r++) {
+        const i = panel * 4 + r;
+        if (i >= count) {
+          for (let k = 0; k < n; k++) f[base + 4 * k + r] = 0;
+        } else if (scale) {
+          const row = rows[i];
+          for (let k = 0; k < n; k++) f[base + 4 * k + r] = scale[k] * row[k];
+        } else {
+          const row = rows[i];
+          for (let k = 0; k < n; k++) f[base + 4 * k + r] = row[k];
+        }
+      }
+    }
+    return;
+  }
+  // Transposed: the operand's row i is column i of `rows`, so each row of
+  // `rows` fills one position k in every panel.
+  const last = panels - 1;
+  const lastCount = count - last * 4;
+  for (let k = 0; k < n; k++) {
+    const row = rows[k];
+    let o = offset + 4 * k;
+    for (let panel = 0; panel < last; panel++, o += 4 * n) {
+      const i = 4 * panel;
+      f[o] = row[i];
+      f[o + 1] = row[i + 1];
+      f[o + 2] = row[i + 2];
+      f[o + 3] = row[i + 3];
+    }
+    for (let r = 0; r < 4; r++) {
+      f[o + r] = r < lastCount ? row[last * 4 + r] : 0;
+    }
+  }
+}
+
+function allFinite(f, from, to) {
+  for (let i = from; i < to; i++) {
+    if (!Number.isFinite(f[i])) return false;
+  }
+  return true;
 }

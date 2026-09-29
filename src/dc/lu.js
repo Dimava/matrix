@@ -1,9 +1,16 @@
 import Matrix from '../matrix';
+import { getKernels } from '../wasm/index';
 import WrapperMatrix2D from '../wrap/WrapperMatrix2D';
 
 // Columns factored together. Wider blocks give the dot products more
 // independent sums to overlap but leave more work to the column-by-column tail.
 const BLOCK = 4;
+// Smaller problems stay in JavaScript, where they finish before copying them to
+// WebAssembly and back would pay off: factorizations of fewer values than
+// WASM_MIN_FACTOR_SIZE (20 × 20), and solves of fewer multiply-adds than
+// WASM_MIN_SOLVE_WORK (rows² × right-hand-side columns).
+const WASM_MIN_FACTOR_SIZE = 400;
+const WASM_MIN_SOLVE_WORK = 1024;
 // Below this many rows or columns, the dot products are too short for the
 // blocked algorithm to make up for its extra copying.
 const MIN_BLOCKED_SIZE = 80;
@@ -22,10 +29,16 @@ export default class LuDecomposition {
       pivotVector[i] = i;
     }
 
-    const pivotSign =
-      Math.min(rows, columns) < MIN_BLOCKED_SIZE
-        ? factorByColumn(lu.data, rows, columns, pivotVector)
-        : factorBlocked(lu.data, rows, columns, pivotVector);
+    let pivotSign = 0;
+    if (rows * columns >= WASM_MIN_FACTOR_SIZE) {
+      pivotSign = factorWasm(lu.data, rows, columns, pivotVector);
+    }
+    if (pivotSign === 0) {
+      pivotSign =
+        Math.min(rows, columns) < MIN_BLOCKED_SIZE
+          ? factorByColumn(lu.data, rows, columns, pivotVector)
+          : factorBlocked(lu.data, rows, columns, pivotVector);
+    }
 
     this.LU = lu;
     this.pivotVector = pivotVector;
@@ -57,6 +70,16 @@ export default class LuDecomposition {
     }
 
     let count = value.columns;
+    if (lu.isSquare() && rows * rows * count >= WASM_MIN_SOLVE_WORK) {
+      const X = solvesIdentity(lu, value)
+        ? solveIdentityWasm(lu.data, this.pivotVector, rows)
+        : solveWasm(
+            lu.data,
+            rows,
+            value.subMatrixRow(this.pivotVector, 0, count - 1),
+          );
+      if (X) return X;
+    }
     if (rows >= MIN_IDENTITY_SOLVE_SIZE && solvesIdentity(lu, value)) {
       return solveIdentity(lu.data, this.pivotVector, rows);
     }
@@ -487,6 +510,130 @@ function solveIdentity(lu, pivotVector, n) {
   }
   for (let j0 = 0; j0 < n; j0 += SOLVE_BLOCK) {
     backward(lu, n, x, j0, Math.min(j0 + SOLVE_BLOCK, n));
+  }
+  return X;
+}
+
+// Block width of the WebAssembly factorization (W in wasm/kernels.ts).
+const WASM_BLOCK = 8;
+
+/**
+ * Factors `data` in place with the WebAssembly kernel, which runs the same
+ * blocked algorithm as the constructor. Returns the pivot sign, or 0 if
+ * WebAssembly is unavailable.
+ */
+function factorWasm(data, rows, columns, pivotVector) {
+  const lda = rowStride(columns);
+  const aLength = rows * lda;
+  const workOffset = aLength + Math.ceil(rows / 2);
+  const kernels = getKernels((workOffset + 2 * rows * WASM_BLOCK) * 8);
+  if (!kernels) return 0;
+  const f = kernels.f64;
+  for (let i = 0; i < rows; i++) {
+    f.set(data[i], i * lda);
+  }
+  const sign = kernels.exports.luFactor(
+    0,
+    rows,
+    columns,
+    lda,
+    aLength * 8,
+    workOffset * 8,
+  );
+  for (let i = 0; i < rows; i++) {
+    data[i].set(f.subarray(i * lda, i * lda + columns));
+  }
+  const pivots = kernels.i32;
+  for (let i = 0; i < rows; i++) {
+    pivotVector[i] = pivots[aLength * 2 + i];
+  }
+  return sign;
+}
+
+/**
+ * Row stride, in values, for rows of `count` values in WebAssembly memory: a
+ * multiple of 8, as the solve kernels need, and one cache line more when that
+ * is a multiple of 64, whose rows would compete for the same cache sets (see
+ * allocateRows in src/matrix.js).
+ * @param {number} count
+ * @returns {number}
+ */
+function rowStride(count) {
+  const stride = Math.ceil(count / 8) * 8;
+  return stride % 64 === 0 ? stride + 8 : stride;
+}
+
+/**
+ * Copies the n × n factors into WebAssembly memory, followed by `bytes` of
+ * room. Returns the kernels, their row stride `ldl` and the offset, in values,
+ * of the room.
+ */
+function loadFactors(lu, n, bytes) {
+  const ldl = rowStride(n);
+  const offset = n * ldl;
+  const kernels = getKernels(offset * 8 + bytes);
+  if (!kernels) return undefined;
+  const f = kernels.f64;
+  for (let i = 0; i < n; i++) {
+    f.set(lu[i], i * ldl);
+  }
+  return { kernels, f, ldl, offset };
+}
+
+/** `solve` in WebAssembly for a right-hand side of any width. */
+function solveWasm(lu, n, X) {
+  const count = X.columns;
+  // The kernels work on tiles of 8 columns; the columns past `count` are zero.
+  const width = Math.ceil(count / 8) * 8;
+  const ldx = rowStride(count);
+  const loaded = loadFactors(lu, n, n * ldx * 8);
+  if (!loaded) return undefined;
+  const { kernels, f, ldl, offset: xOffset } = loaded;
+  for (let i = 0; i < n; i++) {
+    const start = xOffset + i * ldx;
+    f.set(X.data[i], start);
+    f.fill(0, start + count, start + width);
+  }
+  kernels.exports.forward(0, n, ldl, xOffset * 8, ldx, 0, width, 0);
+  kernels.exports.backward(0, n, ldl, xOffset * 8, ldx, 0, width);
+  for (let i = 0; i < n; i++) {
+    const start = xOffset + i * ldx;
+    X.data[i].set(f.subarray(start, start + count));
+  }
+  return X;
+}
+
+/** `solveIdentity` in WebAssembly. */
+function solveIdentityWasm(lu, pivotVector, n) {
+  const width = Math.ceil(n / 8) * 8;
+  const ldx = rowStride(n);
+  const loaded = loadFactors(lu, n, 2 * n * ldx * 8 + 4 * n);
+  if (!loaded) return undefined;
+  const { kernels, f, ldl, offset: xOffset } = loaded;
+  const yOffset = xOffset + n * ldx;
+  const pivotsOffset = (yOffset + n * ldx) * 8;
+  f.fill(0, yOffset, yOffset + n * ldx);
+  for (let i = 0; i < n; i++) {
+    f[yOffset + i * ldx + i] = 1;
+  }
+  const pivots = kernels.i32;
+  for (let i = 0; i < n; i++) {
+    pivots[pivotsOffset / 4 + i] = pivotVector[i];
+  }
+  kernels.exports.forwardIdentity(0, n, ldl, yOffset * 8, ldx);
+  f.fill(0, xOffset, xOffset + n * ldx);
+  kernels.exports.scatterColumns(
+    yOffset * 8,
+    xOffset * 8,
+    n,
+    ldx,
+    pivotsOffset,
+  );
+  kernels.exports.backward(0, n, ldl, xOffset * 8, ldx, 0, width);
+  const X = new Matrix(n, n);
+  for (let i = 0; i < n; i++) {
+    const start = xOffset + i * ldx;
+    X.data[i].set(f.subarray(start, start + n));
   }
   return X;
 }

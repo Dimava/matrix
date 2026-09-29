@@ -1,10 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
 import { LU, Matrix, determinant, inverse, solve } from '../..';
+import { setWasmEnabled } from '../../wasm/index';
 
-// The factorization and the solves are blocked, but every value must still
-// come out of the same operations in the same order as JAMA's loops, which the
-// library used before. These are those loops.
+// The factorization and the solves are blocked and, when available, run in
+// WebAssembly, but every value must still come out of the same operations in
+// the same order as JAMA's loops, which the library used before. These are
+// those loops.
 
 function jamaLu(matrix) {
   const lu = matrix.clone();
@@ -110,8 +112,8 @@ function expectIdentical(actual, expected) {
   }
 }
 
-// Sizes around the block width (4) and the blocked threshold (80 rows and
-// columns).
+// Sizes around the block widths (4 and 8), the WebAssembly thresholds and the
+// blocked threshold (80 rows and columns).
 const shapes = [
   [1, 1],
   [3, 3],
@@ -131,8 +133,14 @@ const shapes = [
 ];
 const kinds = ['random', 'integers', 'sparse', 'scaled', 'singular'];
 
-describe('LU is bit-identical to the JAMA loops', () => {
+describe.each([
+  ['WebAssembly', true],
+  ['JavaScript', false],
+])('LU is bit-identical to the JAMA loops (%s)', (_, wasm) => {
+  afterAll(() => setWasmEnabled(true));
+
   it.each(shapes)('factors of %i×%i', (rows, columns) => {
+    setWasmEnabled(wasm);
     for (const kind of kinds) {
       const matrix = sample(rows, columns, kind, rows * 100 + columns);
       const expected = jamaLu(matrix);
@@ -146,6 +154,7 @@ describe('LU is bit-identical to the JAMA loops', () => {
   it.each(shapes.filter(([r, c]) => r === c))(
     'solve and inverse %i×%i',
     (n) => {
+      setWasmEnabled(wasm);
       for (const kind of kinds) {
         const matrix = sample(n, n, kind, n * 7);
         const expected = jamaLu(matrix);
